@@ -13,22 +13,30 @@ import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import com.extracraftx.minecraft.generatorfabricmod.terminal.Interface;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
 public class GeneratorFabricMod {
 
-    public static final String[] SPINNER = {"◢", "◣", "◤", "◥"};
+    public static final String[] SPINNER = { "◢", "◣", "◤", "◥" };
     public static final int INTERVAL = 50;
 
     public static void main(String[] args) {
         try{
             Interface prompter = new Interface(true);
 
-            prompter.startSpinner("Loading Minecraft versions... ", INTERVAL, SPINNER);
+
+            prompter.startSpinner("Getting Minecraft versions... ", INTERVAL, SPINNER);
             JsonArray mcVersionsData = jsonFromUrl("https://meta.fabricmc.net/v2/versions/game").getAsJsonArray();
             String[] mcVersions = new String[mcVersionsData.size()];
             int defaultMcVersion = 0;
@@ -43,7 +51,8 @@ public class GeneratorFabricMod {
             prompter.finishSpinner("done.");
             Thread.sleep(500);
 
-            prompter.startSpinner("Loading Fabric API versions... ", INTERVAL, SPINNER);
+
+            prompter.startSpinner("Getting Fabric API versions... ", INTERVAL, SPINNER);
             JsonArray apiVersionsData = jsonFromUrl("https://addons-ecs.forgesvc.net/api/v2/addon/306612/files").getAsJsonArray();
             ArrayList<ApiVersion> apiVersionsList = new ArrayList<>();
             Pattern apiRegex = Pattern.compile("\\[([^/\\]]+)(?:/.+)?\\]");
@@ -86,12 +95,63 @@ public class GeneratorFabricMod {
             prompter.finishSpinner("done.");
             Thread.sleep(500);
 
+
+            prompter.startSpinner("Getting Yarn mapping versions... ", INTERVAL, SPINNER);
+            JsonArray yarnVersionsData = jsonFromUrl("https://meta.fabricmc.net/v2/versions/yarn").getAsJsonArray();
+            YarnVersion[] yarnVersions = new YarnVersion[yarnVersionsData.size()];
+            for(int i = 0; i < yarnVersionsData.size(); i++){
+                JsonObject version = yarnVersionsData.get(i).getAsJsonObject();
+                String mcVersion = version.get("gameVersion").getAsString();
+                int build = version.get("build").getAsInt();
+                String maven = version.get("maven").getAsString();
+                String name = version.get("version").getAsString();
+                yarnVersions[i] = new YarnVersion(mcVersion, build, maven, name);
+            }
+            prompter.finishSpinner("done.");
+            Thread.sleep(500);
+
+
+            prompter.startSpinner("Getting Loom versions... ", INTERVAL, SPINNER);
+            Document loomData = xmlFromUrl("https://maven.fabricmc.net/net/fabricmc/fabric-loom/maven-metadata.xml");
+            NodeList loomVersionsData = loomData.getElementsByTagName("version");
+            String[] loomVersions = new String[loomVersionsData.getLength()];
+            for(int i = 0; i < loomVersions.length; i++){
+                loomVersions[i] = loomVersionsData.item(i).getTextContent();
+            }
+            prompter.finishSpinner("done.");
+            Thread.sleep(500);
+
+            
+            prompter.startSpinner("Getting Fabric Loader versions... ", defaultMcVersion, loomVersions);
+            JsonArray loaderVersionsData = jsonFromUrl("https://meta.fabricmc.net/v2/versions/loader").getAsJsonArray();
+            LoaderVersion[] loaderVersions = new LoaderVersion[loaderVersionsData.size()];
+            for(int i = 0; i < loaderVersionsData.size(); i++){
+                JsonObject version = loaderVersionsData.get(i).getAsJsonObject();
+                int build = version.get("build").getAsInt();
+                String maven = version.get("maven").getAsString();
+                String name = version.get("version").getAsString();
+                loaderVersions[i] = new LoaderVersion(build, maven, name);
+            }
+            prompter.finishSpinner("done.");
+            Thread.sleep(500);
+
+
             int mcVersion = prompter.promptList("Select Minecraft version:", true, mcVersions);
+            int yarnVersion = prompter.promptList("Select Yarn mappings:", true, yarnVersions);
+            int loomVersion = prompter.promptList("Select Loom version:", true, loomVersions);
+            int loaderVersion = prompter.promptList("Select Fabric Loader version:", true, loaderVersions);
             boolean useApi = prompter.yesOrNo("Use Fabric API?", true);
             if(useApi)
                 prompter.promptList("Select Fabric API version:", true, apiVersions);
         }
-        catch(Exception e){}
+        catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public static Document xmlFromUrl(String urlString) throws IOException, SAXException, ParserConfigurationException {
+        URL url = new URL(urlString);
+        return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(url.openStream());
     }
 
     public static JsonElement jsonFromUrl(String url) throws IOException{
@@ -120,6 +180,42 @@ public class GeneratorFabricMod {
 
         public ApiVersion(int mcVersion, String name){
             this.mcVersion = mcVersion;
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private static class YarnVersion{
+        String mcVersion;
+        int build;
+        String maven;
+        String name;
+
+        public YarnVersion(String mcVersion, int build, String maven, String name){
+            this.mcVersion = mcVersion;
+            this.build = build;
+            this.maven = maven;
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private static class LoaderVersion{
+        int build;
+        String maven;
+        String name;
+
+        public LoaderVersion(int build, String maven, String name){
+            this.build = build;
+            this.maven = maven;
             this.name = name;
         }
 
