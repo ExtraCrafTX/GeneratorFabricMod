@@ -3,15 +3,18 @@
  */
 package com.extracraftx.minecraft.generatorfabricmod;
 
-import com.extracraftx.minecraft.generatorfabricmod.prompter.Prompter;
+import com.extracraftx.minecraft.generatorfabricmod.terminal.Interface;
 
 import org.jline.reader.UserInterruptException;
 
 public class GeneratorFabricMod {
 
+    public static final String[] SPINNER = {"◢", "◣", "◤", "◥"};
+    public static final int INTERVAL = 50;
+
     public static void main(String[] args) {
         try{
-            Prompter prompter = new Prompter();
+            Interface prompter = new Interface();
             
             String name = prompter.prompt(
                 "Please enter your name:",
@@ -26,6 +29,12 @@ public class GeneratorFabricMod {
 
             System.out.println(greetings[greeting] + name + "!");
             System.out.println(letter != -1 ? "You chose the letter '" + letters[letter] + "'." : "You did not choose a letter.");
+
+            prompter.startSpinner("Waiting for a bit... ", INTERVAL, SPINNER);
+            
+            Thread.sleep(5000);
+
+            prompter.finishSpinner("done.");
         }
         catch(UserInterruptException e){}
         catch(Exception e){
