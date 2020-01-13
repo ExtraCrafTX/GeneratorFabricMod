@@ -49,6 +49,14 @@ public class Interface{
         return prompter.promptList(prompt, required, options);
     }
 
+    public int promptList(String prompt, boolean required, Object... options){
+        String[] stringOptions = new String[options.length];
+        for(int i = 0; i < options.length; i++){
+            stringOptions[i] = options[i].toString();
+        }
+        return prompter.promptList(prompt, required, stringOptions);
+    }
+
     public void startSpinner(String text, int interval, String... frames){
         spinner = new Spinner(text, interval, frames);
         spinner.show();
@@ -74,7 +82,7 @@ public class Interface{
 
     private void moveUp(int lines){
         if(lines <= 0)
-            throw new IllegalArgumentException("Number of lines must be > 0");
+            throw new IllegalArgumentException("Number of lines must be > 0, was "+lines);
         CSI(lines + "F");
     }
 
@@ -84,7 +92,7 @@ public class Interface{
 
     private void moveDown(int lines){
         if(lines <= 0)
-            throw new IllegalArgumentException("Number of lines must be > 0");
+            throw new IllegalArgumentException("Number of lines must be > 0, was "+lines);
         CSI(lines + "E");
     }
 
@@ -255,6 +263,7 @@ public class Interface{
         }
     
         private void printListItem(String item, boolean current){
+            clearLine();
             if(current){
                 yellow();
                 print("> "); println(item);

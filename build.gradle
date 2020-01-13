@@ -24,6 +24,7 @@ dependencies {
     // This dependency is used by the application.
     implementation 'org.jline:jline:3.13.3'
     implementation 'org.fusesource.jansi:jansi:1.18'
+    implementation 'com.google.code.gson:gson:2.8.6'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
