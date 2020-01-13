@@ -17,7 +17,15 @@ public class GeneratorFabricMod {
                 "Please enter your name:",
                 (input)-> input.isEmpty() ? "Your name cannot be empty" : null
             );
-            System.out.println("Hello " + name + "!");
+
+            String[] greetings = {"Hello ", "Hi "};
+            int greeting = prompter.promptList("Please select a greeting:", true, greetings);
+
+            String[] letters = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"};
+            int letter = prompter.promptList("Please select a letter:", false, letters);
+
+            System.out.println(greetings[greeting] + name + "!");
+            System.out.println(letter != -1 ? "You chose the letter '" + letters[letter] + "'." : "You did not choose a letter.");
         }
         catch(UserInterruptException e){}
         catch(Exception e){
