@@ -19,8 +19,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import org.jline.reader.UserInterruptException;
-
 public class GeneratorFabricMod {
 
     public static final String[] SPINNER = {"◢", "◣", "◤", "◥"};
@@ -28,7 +26,7 @@ public class GeneratorFabricMod {
 
     public static void main(String[] args) {
         try{
-            Interface prompter = new Interface();
+            Interface prompter = new Interface(true);
 
             prompter.startSpinner("Loading Minecraft versions... ", INTERVAL, SPINNER);
             JsonArray mcVersionsData = jsonFromUrl("https://meta.fabricmc.net/v2/versions/game").getAsJsonArray();
@@ -48,7 +46,7 @@ public class GeneratorFabricMod {
             prompter.startSpinner("Loading Fabric API versions... ", INTERVAL, SPINNER);
             JsonArray apiVersionsData = jsonFromUrl("https://addons-ecs.forgesvc.net/api/v2/addon/306612/files").getAsJsonArray();
             ArrayList<ApiVersion> apiVersionsList = new ArrayList<>();
-            Pattern apiRegex = Pattern.compile("\\[(.+)\\]");
+            Pattern apiRegex = Pattern.compile("\\[([^/\\]]+)(?:/.+)?\\]");
             for(int i = 0; i < apiVersionsData.size(); i++){
                 JsonObject version = apiVersionsData.get(i).getAsJsonObject();
                 String displayName = version.get("displayName").getAsString();
@@ -89,13 +87,11 @@ public class GeneratorFabricMod {
             Thread.sleep(500);
 
             int mcVersion = prompter.promptList("Select Minecraft version:", true, mcVersions);
-            int apiVersion = prompter.promptList("Select Fabric API version:", true, apiVersions);
+            boolean useApi = prompter.yesOrNo("Use Fabric API?", true);
+            if(useApi)
+                prompter.promptList("Select Fabric API version:", true, apiVersions);
         }
-        catch(UserInterruptException e){}
-        catch(Exception e){
-            System.err.println("An unknown error occured. The stack trace follows: ");
-            e.printStackTrace();
-        }
+        catch(Exception e){}
     }
 
     public static JsonElement jsonFromUrl(String url) throws IOException{

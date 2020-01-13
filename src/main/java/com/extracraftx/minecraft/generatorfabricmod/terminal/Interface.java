@@ -17,12 +17,15 @@ public class Interface{
     private Terminal terminal;
     private BindingReader raw;
     private LineReader reader;
-    private KeyMap<Integer> map;
+    private KeyMap<Integer> listMap;
+    private KeyMap<Integer> booleanMap;
+
+    private boolean compact;
 
     private Prompter prompter;
     private Spinner spinner;
 
-    public Interface() throws IOException{
+    public Interface(boolean compact) throws IOException{
         terminal = TerminalBuilder.builder()
                 .nativeSignals(true)
                 .signalHandler((sig)->System.exit(0))
@@ -31,18 +34,35 @@ public class Interface{
         raw = new BindingReader(terminal.reader());
         reader = LineReaderBuilder.builder().terminal(terminal).appName("Testing").build();
 
-        map = new KeyMap<>();
-        map.setAmbiguousTimeout(1);
-        map.bind( 0, "\033OA");
-        map.bind( 1, "\033OB");
-        map.bind( 2, "\r\n", "\r", "\n");
-        map.bind(-1, "\033");
+        listMap = new KeyMap<>();
+        listMap.setAmbiguousTimeout(1);
+        listMap.bind( 0, "\033OA", "k");
+        listMap.bind( 1, "\033OB", "j");
+        listMap.bind( 2, "\r\n", "\r", "\n");
+        listMap.bind(-1, "\033");
+
+        booleanMap = new KeyMap<>();
+        booleanMap.setAmbiguousTimeout(1);
+        booleanMap.bind(0, "\033OC", "\033OD");
+        booleanMap.bind(1, "y", "Y");
+        booleanMap.bind(2, "n", "N");
+        booleanMap.bind(3, "\r\n", "\r", "\n");
 
         prompter = new Prompter();
+
+        this.compact = compact;
     }
 
     public String prompt(String prompt, Function<String, String> validator){
-        return prompter.prompt(prompt, validator);
+        return compact ? prompter.promptCompact(prompt, validator) : prompter.prompt(prompt, validator);
+    }
+
+    public boolean yesOrNo(String prompt, boolean def){
+        return prompter.yesOrNo(prompt, def);
+    }
+
+    public boolean yesOrNo(String prompt, boolean def, String yes, String no){
+        return prompter.yesOrNo(prompt, def, yes, no);
     }
     
     public int promptList(String prompt, boolean required, String... options){
@@ -108,6 +128,22 @@ public class Interface{
         CSI("2K");
     }
 
+    private void clearAfter(){
+        CSI("J");
+    }
+
+    private void bold(){
+        CSI("1m");
+    }
+
+    private void faint(){
+        CSI("2m");
+    }
+
+    private void normal(){
+        CSI("22m");
+    }
+
     private void red(){
         CSI("31m");
     }
@@ -118,6 +154,26 @@ public class Interface{
 
     private void yellow(){
         CSI("33m");
+    }
+
+    private void light(){
+        CSI("37m");
+    }
+
+    private void dark(){
+        CSI("90m");
+    }
+
+    private void brightRed(){
+        CSI("91m");
+    }
+
+    private void brightGreen(){
+        CSI("92m");
+    }
+
+    private void white(){
+        CSI("97m");
     }
 
     private void reset(){
@@ -151,7 +207,9 @@ public class Interface{
     
     private class Prompter{
         public String prompt(String prompt, Function<String, String> validator){
-            System.out.println(prompt);
+            bold(); white();
+            println(prompt);
+            reset();
             String line = null;
             String result;
             while((result = validator.apply(line = readLine(line))) != null){
@@ -162,10 +220,81 @@ public class Interface{
             clearLine();
             return line;
         }
+
+        public String promptCompact(String prompt, Function<String, String> validator){
+            bold(); white();
+            print(prompt); print(" ");
+            reset();
+            String line = null;
+            String result;
+            while((result = validator.apply(line = readLine(line))) != null){
+                clearLine(); red();
+                print(result);
+                reset(); moveUp();
+                bold(); white();
+                print(prompt); print(" ");
+                reset();
+            }
+            moveUp(); clearLine();
+            print(prompt); print(" ");
+            yellow();
+            println(line);
+            reset(); clearLine();
+            return line;
+        }
+
+        public boolean yesOrNo(String prompt, boolean def){
+            return yesOrNo(prompt, def, "Yes", "No");
+        }
+
+        public boolean yesOrNo(String prompt, boolean def, String yes, String no){
+            hideCursor();
+            boolean val = def;
+            while(true){
+                home(); clearLine(); bold(); white();
+                print(prompt); print(" ");
+                reset();
+
+                reset(); dark();
+                if(val){
+                    brightGreen(); bold();
+                }
+                print(yes);
+                reset(); dark();
+                print("/");
+                if(!val){
+                    brightRed(); bold();
+                }
+                print(no);
+
+                int input = raw.readBinding(booleanMap);
+                if(input == 0){
+                    val = !val;
+                }else if(input == 1){
+                    val = true;
+                    break;
+                }else if(input == 2){
+                    val = false;
+                    break;
+                }else if(input == 3){
+                    break;
+                }
+            }
+            home(); clearLine(); bold(); white();
+            print(prompt); print(" ");
+            reset();
+            yellow();
+            println(val ? yes : no);
+            reset();
+            showCursor();
+
+            return val;
+        }
     
         public int promptList(String prompt, boolean required, String... options){
-            clearLine(); hideCursor();
+            clearLine(); hideCursor(); bold(); white();
             println(prompt);
+            reset();
             
             int val = -1;
             if(options.length < LIST_SIZE)
@@ -189,7 +318,7 @@ public class Interface{
                 print(error);
                 reset(); home();
     
-                int input = raw.readBinding(map);
+                int input = raw.readBinding(listMap);
                 if(input == 2){
                     break;
                 }
@@ -209,6 +338,17 @@ public class Interface{
                 }
                 moveUp(options.length);
             }
+            if(compact){
+                moveUp(options.length);
+                clearAfter();
+                if(current == -1){
+                    yellow();
+                    println("Nothing selected");
+                    reset();
+                }else{
+                    printListItem(options[current], true);
+                }
+            }
             return current;
         }
     
@@ -221,13 +361,14 @@ public class Interface{
                     int i = (start + pos) % options.length;
                     printListItem(options[i], i==current);
                 }
+                dark();
                 println("(Move to reveal additional choices)");
                 
                 clearLine(); red();
                 print(error);
                 reset(); home();
     
-                int input = raw.readBinding(map);
+                int input = raw.readBinding(listMap);
                 if(input == 2){
                     break;
                 }
@@ -258,6 +399,17 @@ public class Interface{
                     }
                 }
                 moveUp(LIST_SIZE+1);
+            }
+            if(compact){
+                moveUp(LIST_SIZE+1);
+                clearAfter();
+                if(current == -1){
+                    yellow();
+                    println("Nothing selected");
+                    reset();
+                }else{
+                    printListItem(options[current], true);
+                }
             }
             return current;
         }
@@ -301,7 +453,7 @@ public class Interface{
             
             home(); clearLine();
             print(message);
-            red();
+            red(); bold();
             println(error);
             reset();
         }
@@ -314,7 +466,7 @@ public class Interface{
             
             home(); clearLine();
             print(message);
-            green();
+            green(); bold();
             println(success);
             reset();
         }
