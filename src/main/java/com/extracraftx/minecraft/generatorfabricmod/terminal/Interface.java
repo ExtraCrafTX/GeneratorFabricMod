@@ -20,12 +20,10 @@ public class Interface{
     private KeyMap<Integer> listMap;
     private KeyMap<Integer> booleanMap;
 
-    private boolean compact;
-
     private Prompter prompter;
     private Spinner spinner;
 
-    public Interface(boolean compact) throws IOException{
+    public Interface() throws IOException{
         terminal = TerminalBuilder.builder()
                 .nativeSignals(true)
                 .signalHandler((sig)->System.exit(0))
@@ -49,12 +47,18 @@ public class Interface{
         booleanMap.bind(3, "\r\n", "\r", "\n");
 
         prompter = new Prompter();
+    }
 
-        this.compact = compact;
+    public String prompt(String prompt){
+        return prompter.prompt(prompt, null, s->null);
     }
 
     public String prompt(String prompt, Function<String, String> validator){
-        return compact ? prompter.promptCompact(prompt, validator) : prompter.prompt(prompt, validator);
+        return prompter.prompt(prompt, null, validator);
+    }
+
+    public String prompt(String prompt, String def, Function<String, String> validator){
+        return prompter.prompt(prompt, def, validator);
     }
 
     public boolean yesOrNo(String prompt, boolean def){
@@ -65,16 +69,16 @@ public class Interface{
         return prompter.yesOrNo(prompt, def, yes, no);
     }
     
-    public int promptList(String prompt, boolean required, String... options){
-        return prompter.promptList(prompt, required, options);
+    public int promptList(String prompt, boolean required, int def, String... options){
+        return prompter.promptList(prompt, required, def, options);
     }
 
-    public int promptList(String prompt, boolean required, Object... options){
+    public int promptList(String prompt, boolean required, int def, Object... options){
         String[] stringOptions = new String[options.length];
         for(int i = 0; i < options.length; i++){
             stringOptions[i] = options[i].toString();
         }
-        return prompter.promptList(prompt, required, stringOptions);
+        return prompter.promptList(prompt, required, def, stringOptions);
     }
 
     public void startSpinner(String text, int interval, String... frames){
@@ -206,40 +210,25 @@ public class Interface{
     }
     
     private class Prompter{
-        public String prompt(String prompt, Function<String, String> validator){
+        public String prompt(String prompt, String def, Function<String, String> validator){
             bold(); white();
             println(prompt);
             reset();
-            String line = null;
+            String line = def;
             String result;
             while((result = validator.apply(line = readLine(line))) != null){
                 clearLine(); red();
                 print(result);
                 reset(); moveUp();
             }
-            clearLine();
-            return line;
-        }
-
-        public String promptCompact(String prompt, Function<String, String> validator){
+            clearLine(); moveUp();
+            clearLine(); moveUp();
             bold(); white();
             print(prompt); print(" ");
             reset();
-            String line = null;
-            String result;
-            while((result = validator.apply(line = readLine(line))) != null){
-                clearLine(); red();
-                print(result);
-                reset(); moveUp();
-                bold(); white();
-                print(prompt); print(" ");
-                reset();
-            }
-            moveUp(); clearLine();
-            print(prompt); print(" ");
             yellow();
             println(line);
-            reset(); clearLine();
+            reset();
             return line;
         }
 
@@ -290,24 +279,34 @@ public class Interface{
 
             return val;
         }
-    
-        public int promptList(String prompt, boolean required, String... options){
+
+        public int promptList(String prompt, boolean required, int def, String... options){
             clearLine(); hideCursor(); bold(); white();
             println(prompt);
             reset();
             
             int val = -1;
             if(options.length < LIST_SIZE)
-                val = list(required ? "You must select an option" : null, options);
+                val = list(required ? "You must select an option" : null, def, options);
             else
-                val = scrollingList(required ? "You must select an option" : null, options);
+                val = scrollingList(required ? "You must select an option" : null, def, options);
             
-            clearLine(); showCursor();
+            moveUp(); clearLine();
+            bold(); white();
+            print(prompt); print(" ");
+            reset();
+            yellow();
+            if(val == -1)
+                println("Nothing selected");
+            else
+                println(options[val]);
+            
+            showCursor();
             return val;
         }
 
-        private int list(String requiredMessage, String... options){
-            int current = 0;
+        private int list(String requiredMessage, int def, String... options){
+            int current = def;
             String error = "";
             while(true){
                 for(int i = 0; i < options.length; i++){
@@ -338,23 +337,14 @@ public class Interface{
                 }
                 moveUp(options.length);
             }
-            if(compact){
-                moveUp(options.length);
-                clearAfter();
-                if(current == -1){
-                    yellow();
-                    println("Nothing selected");
-                    reset();
-                }else{
-                    printListItem(options[current], true);
-                }
-            }
+            moveUp(options.length);
+            clearAfter();
             return current;
         }
     
-        private int scrollingList(String requiredMessage, String... options){
-            int current = 0;
-            int start = options.length-1;
+        private int scrollingList(String requiredMessage, int def, String... options){
+            int current = def;
+            int start = (options.length+def-1)%options.length;
             String error = "";
             while(true){
                 for(int pos = 0; pos < LIST_SIZE; pos++){
@@ -400,17 +390,8 @@ public class Interface{
                 }
                 moveUp(LIST_SIZE+1);
             }
-            if(compact){
-                moveUp(LIST_SIZE+1);
-                clearAfter();
-                if(current == -1){
-                    yellow();
-                    println("Nothing selected");
-                    reset();
-                }else{
-                    printListItem(options[current], true);
-                }
-            }
+            moveUp(LIST_SIZE+1);
+            clearAfter();
             return current;
         }
     

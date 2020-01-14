@@ -31,9 +31,29 @@ public class GeneratorFabricMod {
     public static final String[] SPINNER = { "◢", "◣", "◤", "◥" };
     public static final int INTERVAL = 50;
 
+    public static final License[] LICENSES = {
+        new License("No License (Copyrighted)", "All-Rights-Reserved"),
+        new License("MIT", "MIT"),
+        new License("Internet Systems Consortium (ISC) License", "ISC"),
+        new License("BSD 2-Clause (FreeBSD) License", "BSD-2-Clause-FreeBSD"),
+        new License("BSD 3-Clause (NewBSD) License", "BSD-3-Clause"),
+        new License("Apache 2.0", "Apache-2.0"),
+        new License("Mozilla Public License 2.0", "MPL-2.0"),
+        new License("GNU LGPL 3.0", "LGPL-3.0"),
+        new License("GNU GPL 3.0", "GPL-3.0"),
+        new License("GNU AGPL 3.0", "AGPL-3.0"),
+        new License("Unlicense", "unlicense")
+    };
+    public static final int LOOM_DEFAULT = 11;
+    public static final int LOOM_OLD = 9;
+
+    public static final String[] KEYWORDS = {"abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const", "default", "do", "double", "else", "enum", "extends", "false", "final", "finally", "float", "for", "goto", "if", "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "null", "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "true", "try", "void", "volatile", "while", "continue"};
+    public static final Pattern PACKAGE_REGEX = Pattern.compile("^([A-Za-z$_][A-Za-z0-9$_]*\\.)*[A-Za-z$_][A-Za-z0-9$_]*$");
+    public static final Pattern IDENT_REGEX = Pattern.compile("^[A-Za-z$_][A-Za-z0-9$_]*$");
+
     public static void main(String[] args) {
         try{
-            Interface prompter = new Interface(true);
+            Interface prompter = new Interface();
 
 
             prompter.startSpinner("Getting Minecraft versions... ", INTERVAL, SPINNER);
@@ -102,10 +122,17 @@ public class GeneratorFabricMod {
             for(int i = 0; i < yarnVersionsData.size(); i++){
                 JsonObject version = yarnVersionsData.get(i).getAsJsonObject();
                 String mcVersion = version.get("gameVersion").getAsString();
+                int index = mcVersions.length;
+                for(int j = 0; j < mcVersions.length; j++){
+                    if(mcVersion.equals(mcVersions[j])){
+                        index = j;
+                        break;
+                    }
+                }
                 int build = version.get("build").getAsInt();
                 String maven = version.get("maven").getAsString();
                 String name = version.get("version").getAsString();
-                yarnVersions[i] = new YarnVersion(mcVersion, build, maven, name);
+                yarnVersions[i] = new YarnVersion(index, build, maven, name);
             }
             prompter.finishSpinner("done.");
             Thread.sleep(500);
@@ -116,7 +143,7 @@ public class GeneratorFabricMod {
             NodeList loomVersionsData = loomData.getElementsByTagName("version");
             String[] loomVersions = new String[loomVersionsData.getLength()];
             for(int i = 0; i < loomVersions.length; i++){
-                loomVersions[i] = loomVersionsData.item(i).getTextContent();
+                loomVersions[loomVersions.length-1-i] = loomVersionsData.item(i).getTextContent();
             }
             prompter.finishSpinner("done.");
             Thread.sleep(500);
@@ -135,14 +162,94 @@ public class GeneratorFabricMod {
             prompter.finishSpinner("done.");
             Thread.sleep(500);
 
+            
+            Pattern semver = Pattern.compile("(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?");
 
-            int mcVersion = prompter.promptList("Select Minecraft version:", true, mcVersions);
-            int yarnVersion = prompter.promptList("Select Yarn mappings:", true, yarnVersions);
-            int loomVersion = prompter.promptList("Select Loom version:", true, loomVersions);
-            int loaderVersion = prompter.promptList("Select Fabric Loader version:", true, loaderVersions);
+            int mcVersion = prompter.promptList("Minecraft version:", true, defaultMcVersion, mcVersions);
+            String modName = prompter.prompt("Mod name:", s->s.isEmpty()?"You must input a name":null);
+            String modId = prompter.prompt("Mod id (must be unique):", s->s.isEmpty()?"You must input a mod id":null);
+            String modDescription = prompter.prompt("Mod description:", s->s.isEmpty()?"You must input a description":null);
+            String modVersion = prompter.prompt("Mod version", "0.1.0", s->{
+                if(s.isEmpty())
+                    return "You must input a mod version";
+                if(!semver.matcher(s).matches())
+                    return "Please ensure you use SemVer";
+                return null;
+            });
+            String author = prompter.prompt("Author:", s->s.isEmpty()?"You must input an author":null);
+            String homepage = prompter.prompt("Homepage (not required):", s->{
+                if(s.isEmpty())
+                    return null;
+                if(!isValidUrl(s))
+                    return "Please enter a valid URL";
+                return null;
+            });
+            String sources = prompter.prompt("Source code URL (not required):", s->{
+                if(s.isEmpty())
+                    return null;
+                if(!isValidUrl(s))
+                    return "Please enter a valid URL";
+                return null;
+            });
+            int license = prompter.promptList("License:", true, 1, LICENSES);
+            String licenseName = author;
+            if(license != LICENSES.length-1);
+                licenseName = prompter.prompt("Name on license:", author, s->s.isEmpty()?"You must enter a name for the license":null);
+            String packageName = prompter.prompt("Main package:", s->{
+                if(s.isEmpty())
+                    return "You must enter a package";
+                if(PACKAGE_REGEX.matcher(s).matches()){
+                    String[] idents = s.split("\\.");
+                    for(String ident : idents){
+                        if(contains(KEYWORDS, ident))
+                            return ident + " is a Java keyword";
+                    }
+                    return null;
+                }else{
+                    return "Please enter a valid Java package name";
+                }
+            });
+            String mainClass = prompter.prompt("Mod initialiser class:", s->{
+                if(s.isEmpty())
+                    return "You must enter an initialiser class";
+                if(IDENT_REGEX.matcher(s).matches()){
+                    if(contains(KEYWORDS, s))
+                        return s + " is a Java keyword";
+                    return null;
+                }else{
+                    return "Please enter a valid Java class name";
+                }
+            });
+            boolean mixins = prompter.yesOrNo("Use mixins?", true);
             boolean useApi = prompter.yesOrNo("Use Fabric API?", true);
-            if(useApi)
-                prompter.promptList("Select Fabric API version:", true, apiVersions);
+            int apiVersion = -1;
+            if(useApi){
+                int defaultApi = 0;
+                for(int i = 0; i < apiVersions.length; i++){
+                    if(apiVersions[i].mcVersion >= mcVersion){
+                        defaultApi = i;
+                        break;
+                    }
+                }
+                apiVersion = prompter.promptList("Select Fabric API version:", true, defaultApi, apiVersions);
+            }
+            Object[] yarnOptions = Arrays.asList(yarnVersions).stream().filter(version->version.mcVersion == mcVersion).toArray();
+            int v1_14_4 = 0;
+            for(int i = 0; i < mcVersions.length; i++){
+                if(mcVersions[i].equals("1.14.4")){
+                    v1_14_4 = i;
+                    break;
+                }
+            }
+            int yarnVersionIndex = prompter.promptList("Select Yarn mappings:", true, 0, yarnOptions);
+            YarnVersion yarnVersion = (YarnVersion) yarnOptions[yarnVersionIndex];
+            boolean v2 = yarnVersion.mcVersion < v1_14_4 || (yarnVersion.mcVersion == v1_14_4 && yarnVersion.build > 14);
+            System.out.println(v1_14_4);
+            System.out.println(mcVersion);
+            System.out.println(yarnVersion.mcVersion);
+            int defaultLoom = loomVersions.length - (v2 ? LOOM_DEFAULT : LOOM_OLD) - 1;
+            int loomVersion = prompter.promptList("Select Loom version:", true, defaultLoom, loomVersions);
+            int loaderVersion = prompter.promptList("Select Fabric Loader version:", true, 0, loaderVersions);
         }
         catch(Exception e){
             e.printStackTrace();
@@ -173,6 +280,23 @@ public class GeneratorFabricMod {
         }
         return result.toString();
     }
+    
+    public static boolean isValidUrl(String url) {
+        try {
+            new URL(url);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean contains(String[] array, String s){
+        for(String item : array){
+            if(s.equals(item))
+                return true;
+        }
+        return false;
+    }
 
     private static class ApiVersion{
         int mcVersion;
@@ -190,12 +314,12 @@ public class GeneratorFabricMod {
     }
 
     private static class YarnVersion{
-        String mcVersion;
+        int mcVersion;
         int build;
         String maven;
         String name;
 
-        public YarnVersion(String mcVersion, int build, String maven, String name){
+        public YarnVersion(int mcVersion, int build, String maven, String name){
             this.mcVersion = mcVersion;
             this.build = build;
             this.maven = maven;
@@ -217,6 +341,21 @@ public class GeneratorFabricMod {
             this.build = build;
             this.maven = maven;
             this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private static class License{
+        String name;
+        String val;
+
+        public License(String name, String val){
+            this.name = name;
+            this.val = val;
         }
 
         @Override
