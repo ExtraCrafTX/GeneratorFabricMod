@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,7 +29,22 @@ import org.xml.sax.SAXException;
 
 public class GeneratorFabricMod {
 
-    public static final String[] SPINNER = { "◢", "◣", "◤", "◥" };
+    public static final String[] SPINNER = {
+        "[    ]",
+        "[=   ]",
+        "[==  ]",
+        "[=== ]",
+        "[ ===]",
+        "[  ==]",
+        "[   =]",
+        "[    ]",
+        "[   =]",
+        "[  ==]",
+        "[ ===]",
+        "[=== ]",
+        "[==  ]",
+        "[=   ]"
+    };
     public static final int INTERVAL = 50;
 
     public static final License[] LICENSES = {
@@ -68,7 +84,7 @@ public class GeneratorFabricMod {
                     break;
                 }
             }
-            prompter.finishSpinner("done.");
+            prompter.finishSpinner("[done]");
             Thread.sleep(500);
 
 
@@ -112,7 +128,7 @@ public class GeneratorFabricMod {
                 }
                 return verA-verB;
             });
-            prompter.finishSpinner("done.");
+            prompter.finishSpinner("[done]");
             Thread.sleep(500);
 
 
@@ -134,7 +150,7 @@ public class GeneratorFabricMod {
                 String name = version.get("version").getAsString();
                 yarnVersions[i] = new YarnVersion(index, build, maven, name);
             }
-            prompter.finishSpinner("done.");
+            prompter.finishSpinner("[done]");
             Thread.sleep(500);
 
 
@@ -145,11 +161,11 @@ public class GeneratorFabricMod {
             for(int i = 0; i < loomVersions.length; i++){
                 loomVersions[loomVersions.length-1-i] = loomVersionsData.item(i).getTextContent();
             }
-            prompter.finishSpinner("done.");
+            prompter.finishSpinner("[done]");
             Thread.sleep(500);
 
             
-            prompter.startSpinner("Getting Fabric Loader versions... ", defaultMcVersion, loomVersions);
+            prompter.startSpinner("Getting Fabric Loader versions... ", INTERVAL, SPINNER);
             JsonArray loaderVersionsData = jsonFromUrl("https://meta.fabricmc.net/v2/versions/loader").getAsJsonArray();
             LoaderVersion[] loaderVersions = new LoaderVersion[loaderVersionsData.size()];
             for(int i = 0; i < loaderVersionsData.size(); i++){
@@ -159,7 +175,7 @@ public class GeneratorFabricMod {
                 String name = version.get("version").getAsString();
                 loaderVersions[i] = new LoaderVersion(build, maven, name);
             }
-            prompter.finishSpinner("done.");
+            prompter.finishSpinner("[done]");
             Thread.sleep(500);
 
             
@@ -169,13 +185,14 @@ public class GeneratorFabricMod {
             String modName = prompter.prompt("Mod name:", s->s.isEmpty()?"You must input a name":null);
             String modId = prompter.prompt("Mod id (must be unique):", s->s.isEmpty()?"You must input a mod id":null);
             String modDescription = prompter.prompt("Mod description:", s->s.isEmpty()?"You must input a description":null);
-            String modVersion = prompter.prompt("Mod version", "0.1.0", s->{
-                if(s.isEmpty())
-                    return "You must input a mod version";
-                if(!semver.matcher(s).matches())
-                    return "Please ensure you use SemVer";
-                return null;
-            });
+            // String modVersion = prompter.prompt("Mod version", "0.1.0", s->{
+            //     if(s.isEmpty())
+            //         return "You must input a mod version";
+            //     if(!semver.matcher(s).matches())
+            //         return "Please ensure you use SemVer";
+            //     return null;
+            // });
+            String modVersion = prompter.promptSemVer("Mod version:");
             String author = prompter.prompt("Author:", s->s.isEmpty()?"You must input an author":null);
             String homepage = prompter.prompt("Homepage (not required):", s->{
                 if(s.isEmpty())
@@ -244,15 +261,12 @@ public class GeneratorFabricMod {
             int yarnVersionIndex = prompter.promptList("Select Yarn mappings:", true, 0, yarnOptions);
             YarnVersion yarnVersion = (YarnVersion) yarnOptions[yarnVersionIndex];
             boolean v2 = yarnVersion.mcVersion < v1_14_4 || (yarnVersion.mcVersion == v1_14_4 && yarnVersion.build > 14);
-            System.out.println(v1_14_4);
-            System.out.println(mcVersion);
-            System.out.println(yarnVersion.mcVersion);
             int defaultLoom = loomVersions.length - (v2 ? LOOM_DEFAULT : LOOM_OLD) - 1;
             int loomVersion = prompter.promptList("Select Loom version:", true, defaultLoom, loomVersions);
             int loaderVersion = prompter.promptList("Select Fabric Loader version:", true, 0, loaderVersions);
         }
         catch(Exception e){
-            e.printStackTrace();
+            // e.printStackTrace();
         }
     }
 

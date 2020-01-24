@@ -1,6 +1,7 @@
 package com.extracraftx.minecraft.generatorfabricmod.terminal;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.function.Function;
 
 import org.jline.keymap.BindingReader;
@@ -19,6 +20,7 @@ public class Interface{
     private LineReader reader;
     private KeyMap<Integer> listMap;
     private KeyMap<Integer> booleanMap;
+    private KeyMap<Integer> semVerMap;
 
     private Prompter prompter;
     private Spinner spinner;
@@ -26,27 +28,60 @@ public class Interface{
     public Interface() throws IOException{
         terminal = TerminalBuilder.builder()
                 .nativeSignals(true)
-                .signalHandler((sig)->System.exit(0))
+                .signalHandler((sig)->{
+                    if(sig == Terminal.Signal.QUIT || sig == Terminal.Signal.TSTP || sig == Terminal.Signal.INT){
+                        System.out.println("\033[0m\033[?25h");
+                        System.exit(0);
+                    }
+                })
                 .build();
         terminal.enterRawMode();
         raw = new BindingReader(terminal.reader());
         reader = LineReaderBuilder.builder().terminal(terminal).appName("Testing").build();
 
         listMap = new KeyMap<>();
-        listMap.setAmbiguousTimeout(1);
-        listMap.bind( 0, "\033OA", "k");
-        listMap.bind( 1, "\033OB", "j");
-        listMap.bind( 2, "\r\n", "\r", "\n");
+        listMap.setAmbiguousTimeout(10);
+        listMap.bind( 0, "\033OA", "\033[A", "k");
+        listMap.bind( 1, "\033OB", "\033[B", "j");
+        listMap.bind( 2, "\012", "\015");
         listMap.bind(-1, "\033");
 
         booleanMap = new KeyMap<>();
-        booleanMap.setAmbiguousTimeout(1);
-        booleanMap.bind(0, "\033OC", "\033OD");
+        booleanMap.setAmbiguousTimeout(10);
+        booleanMap.bind(0, "\033OC", "\033OD", "\033[C", "\033[D");
         booleanMap.bind(1, "y", "Y");
         booleanMap.bind(2, "n", "N");
-        booleanMap.bind(3, "\r\n", "\r", "\n");
+        booleanMap.bind(3, "\012", "\015");
+
+        semVerMap = new KeyMap<>();
+        semVerMap.setAmbiguousTimeout(10);
+        for(char i = '0'; i <= '9'; i++){
+            semVerMap.bind((int)i, ""+i);
+        }
+        for(char i = 'A'; i <= 'Z'; i++){
+            semVerMap.bind((int)i, ""+i);
+            semVerMap.bind(i+32, ""+((char)(i+32)));
+        }
+        semVerMap.bind(0, "\033OD", "\033[D");
+        semVerMap.bind(1, "\033OC", "\033[C");
+        semVerMap.bind(2, "\033OA", "\033[A");
+        semVerMap.bind(3, "\033OB", "\033[B");
+        semVerMap.bind(4, "\012", "\015");
+        semVerMap.bind(5, "+");
+        semVerMap.bind(6, "-");
+        semVerMap.bind(7, ".");
+        semVerMap.bind(8, "\010", "\177", "\033[3~");
 
         prompter = new Prompter();
+
+        reset();
+    }
+
+    public void listen(){
+        while(true){
+            int input = raw.readCharacter();
+            System.out.print(input);
+        }
     }
 
     public String prompt(String prompt){
@@ -67,6 +102,10 @@ public class Interface{
 
     public boolean yesOrNo(String prompt, boolean def, String yes, String no){
         return prompter.yesOrNo(prompt, def, yes, no);
+    }
+
+    public String promptSemVer(String prompt) throws Exception{
+        return prompter.promptSemVer(prompt);
     }
     
     public int promptList(String prompt, boolean required, int def, String... options){
@@ -144,8 +183,16 @@ public class Interface{
         CSI("2m");
     }
 
+    private void inverse(){
+        CSI("7m");
+    }
+
     private void normal(){
         CSI("22m");
+    }
+
+    private void inverseOff(){
+        CSI("27m");
     }
 
     private void red(){
@@ -174,6 +221,14 @@ public class Interface{
 
     private void brightGreen(){
         CSI("92m");
+    }
+
+    private void brightYellow(){
+        CSI("93m");
+    }
+
+    private void brightCyan(){
+        CSI("96m");
     }
 
     private void white(){
@@ -205,6 +260,14 @@ public class Interface{
         System.out.println(s);
     }
 
+    private void print(int s){
+        System.out.print(s);
+    }
+
+    private void println(int s){
+        System.out.println(s);
+    }
+
     private String readLine(String buffer){
         return reader.readLine(null, null, buffer);
     }
@@ -213,21 +276,27 @@ public class Interface{
         public String prompt(String prompt, String def, Function<String, String> validator){
             bold(); white();
             println(prompt);
-            reset();
+            reset(); brightYellow();
             String line = def;
             String result;
             while((result = validator.apply(line = readLine(line))) != null){
                 clearLine(); red();
                 print(result);
-                reset(); moveUp();
+                reset(); moveUp(); brightYellow();
             }
             clearLine(); moveUp();
             clearLine(); moveUp();
             bold(); white();
             print(prompt); print(" ");
             reset();
-            yellow();
-            println(line);
+            if(line.isEmpty()){
+                dark();
+                println("Nothing entered");
+            }else{
+                brightCyan();
+                println(line);
+            }
+            
             reset();
             return line;
         }
@@ -272,7 +341,7 @@ public class Interface{
             home(); clearLine(); bold(); white();
             print(prompt); print(" ");
             reset();
-            yellow();
+            brightCyan();
             println(val ? yes : no);
             reset();
             showCursor();
@@ -280,6 +349,247 @@ public class Interface{
             return val;
         }
 
+        public String promptSemVer(String prompt) throws Exception{
+            hideCursor();
+            bold(); white();
+            println(prompt);
+            reset();
+            int major = 0;
+            int minor = 0;
+            int patch = 0;
+            ArrayList<String> pre = null;
+            ArrayList<String> build = null;
+            int currentSection = 0;
+            while(true){
+                home();
+                printSection(major, currentSection == 0);
+                print(".");
+                printSection(minor, currentSection == 1);
+                print(".");
+                printSection(patch, currentSection == 2);
+                int buildThresh = 4;
+                int drawing = 3;
+                int end = 4;
+                if(pre == null || pre.size() == 0){
+                    dark();
+                    print("-");
+                    printSection("...", currentSection == drawing++);
+                    reset();
+                }else{
+                    print("-");
+                    for(int i = 0; i < pre.size(); i++){
+                        printSection(pre.get(i), currentSection == drawing++);
+                        if(i != pre.size() - 1)
+                            print(".");
+                    }
+                    dark();
+                    print(".");
+                    printSection("...", currentSection == drawing++);
+                    reset();
+                    buildThresh += pre.size();
+                }
+                if(build == null || build.size() == 0){
+                    dark();
+                    print("+");
+                    printSection("...", currentSection == drawing++);
+                    reset();
+                    end = buildThresh;
+                }else{
+                    print("+");
+                    for(int i = 0; i < build.size(); i++){
+                        printSection(build.get(i), currentSection == drawing++);
+                        if(i != build.size() - 1)
+                            print(".");
+                    }
+                    dark();
+                    print(".");
+                    printSection("...", currentSection == drawing++);
+                    reset();
+                    end = buildThresh + build.size();
+                }
+                clearAfter();
+
+                int input = raw.readBinding(semVerMap);
+                if(input == 0 && currentSection > 0){ // Left arrow
+                    currentSection --;
+                }else if(input == 1 && currentSection < end){ //Right arrow
+                    currentSection ++;
+                }else if(input == 2){ //Up arrow
+                    switch(currentSection){
+                        case 0: {major++; break;}
+                        case 1: {minor++; break;}
+                        case 2: {patch++; break;}
+                    }
+                }else if(input == 3){ //Down arrow
+                    switch(currentSection){
+                        case 0: {major = major > 0 ? major-1 : 0; break;}
+                        case 1: {minor = minor > 0 ? minor-1 : 0; break;}
+                        case 2: {patch = patch > 0 ? patch-1 : 0; break;}
+                    }
+                }else if(input == 4){ //Accept
+                    break;
+                }else if(input == 5){ //+
+                    currentSection = buildThresh;
+                }else if(input == 6){ //-
+                    switch(currentSection){
+                        case 0: case 1: case 2: {currentSection = 3; break;}
+                        default: {
+                            if(currentSection < buildThresh){
+                                if(pre == null){
+                                    pre = new ArrayList<>();
+                                }
+                                int index = currentSection - 3;
+                                if(index == pre.size()){
+                                    pre.add("");
+                                }
+                                pre.set(index, pre.get(index)+"-");
+                            }else{
+                                if(build == null){
+                                    build = new ArrayList<>();
+                                }
+                                int index = currentSection - buildThresh;
+                                if(index == build.size()){
+                                    build.add("");
+                                }
+                                build.set(index, build.get(index)+"-");
+                            }
+                        }
+                    }
+                }else if(input == 7){ //.
+                    if(currentSection < 2)
+                        currentSection ++;
+                    else if(currentSection < buildThresh - 1){
+                        currentSection ++;
+                    }else if(currentSection >= buildThresh && currentSection < end){
+                        currentSection ++;
+                    }
+                }else if(input == 8){ //Bksp
+                    switch(currentSection){
+                        case 0: {major /= 10; break;}
+                        case 1: {minor /= 10; break;}
+                        case 2: {patch /= 10; break;}
+                        default: {
+                            if(currentSection < buildThresh-1){
+                                if(pre != null && pre.size() > 0){
+                                    int index = currentSection - 3;
+                                    pre.set(index, delete(pre.get(index)));
+                                    if(pre.get(index).length() == 0){
+                                        pre.remove(index);
+                                        if(currentSection < buildThresh - 2)
+                                            currentSection --;
+                                    }
+                                }
+                            }else if(currentSection >= buildThresh && currentSection < end){
+                                if(build != null && build.size() > 0){
+                                    int index = currentSection - buildThresh;
+                                    build.set(index, delete(build.get(index)));
+                                    if(build.get(index).length() == 0){
+                                        build.remove(index);
+                                        if(currentSection < end - 1)
+                                            currentSection --;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }else if(input >= '0' && input <= '9'){
+                    switch(currentSection){
+                        case 0: {major = major * 10 + (input-48); break;}
+                        case 1: {minor = minor * 10 + (input-48); break;}
+                        case 2: {patch = patch * 10 + (input-48); break;}
+                        default: {
+                            if(currentSection < buildThresh){
+                                if(pre == null){
+                                    pre = new ArrayList<>();
+                                }
+                                int index = currentSection - 3;
+                                if(index == pre.size()){
+                                    pre.add("");
+                                }
+                                pre.set(index, pre.get(index)+((char)input));
+                            }else{
+                                if(build == null){
+                                    build = new ArrayList<>();
+                                }
+                                int index = currentSection - buildThresh;
+                                if(index == build.size()){
+                                    build.add("");
+                                }
+                                build.set(index, build.get(index)+((char)input));
+                            }
+                        }
+                    }
+                }else if((input >= 'A' && input <= 'Z') || (input >= 'a' && input <= 'z')){
+                    if(currentSection < 3)
+                        continue;
+                    if(currentSection < buildThresh){
+                        if(pre == null){
+                            pre = new ArrayList<>();
+                        }
+                        int index = currentSection - 3;
+                        if(index == pre.size()){
+                            pre.add("");
+                        }
+                        pre.set(index, pre.get(index)+((char)input));
+                    }else{
+                        if(build == null){
+                            build = new ArrayList<>();
+                        }
+                        int index = currentSection - buildThresh;
+                        if(index == build.size()){
+                            build.add("");
+                        }
+                        build.set(index, build.get(index)+((char)input));
+                    }
+                }
+            }
+            StringBuilder result = new StringBuilder();
+            result.append(major);
+            result.append(".");
+            result.append(minor);
+            result.append(".");
+            result.append(patch);
+            if(pre != null && pre.size() > 0){
+                result.append('-');
+                result.append(String.join(".", pre));
+            }
+            if(build != null && build.size() > 0){
+                result.append('+');
+                result.append(String.join(".", build));
+            }
+            moveUp(); clearAfter();
+            bold(); white();
+            print(prompt); print(" ");
+            normal(); brightCyan();
+            println(result.toString());
+            reset(); showCursor();
+            return result.toString();
+        }
+
+        private void printSection(int val, boolean current){
+            if(current){
+                inverse();
+                print(val);
+                inverseOff();
+            }else{
+                print(val);
+            }
+        }
+
+        private void printSection(String val, boolean current){
+            if(current){
+                inverse();
+                print(val);
+                inverseOff();
+            }else{
+                print(val);
+            }
+        }
+
+        private String delete(String s){
+            return s.substring(0, s.length()-1);
+        }
+    
         public int promptList(String prompt, boolean required, int def, String... options){
             clearLine(); hideCursor(); bold(); white();
             println(prompt);
@@ -295,13 +605,13 @@ public class Interface{
             bold(); white();
             print(prompt); print(" ");
             reset();
-            yellow();
+            brightCyan();
             if(val == -1)
                 println("Nothing selected");
             else
                 println(options[val]);
             
-            showCursor();
+            reset(); showCursor();
             return val;
         }
 
@@ -398,11 +708,13 @@ public class Interface{
         private void printListItem(String item, boolean current){
             clearLine();
             if(current){
-                yellow();
+                brightYellow();
                 print("> "); println(item);
                 reset();
             }else{
+                light();
                 print("  "); println(item);
+                reset();
             }
         }
     }
@@ -414,6 +726,8 @@ public class Interface{
     
         private boolean running = false;
         private int frame = 0;
+
+        private long startTime = 0;
     
         public Spinner(String message, int interval, String... frames){
             this.message = message;
@@ -423,6 +737,7 @@ public class Interface{
     
         public void show(){
             running = true;
+            startTime = System.currentTimeMillis();
             this.start();
         }
     
@@ -435,7 +750,9 @@ public class Interface{
             home(); clearLine();
             print(message);
             red(); bold();
-            println(error);
+            print(error); print(" ");
+            normal(); dark();
+            print((int)(System.currentTimeMillis() - startTime)); println("ms");
             reset();
         }
     
@@ -448,7 +765,9 @@ public class Interface{
             home(); clearLine();
             print(message);
             green(); bold();
-            println(success);
+            print(success); print(" ");
+            normal(); dark();
+            print((int)(System.currentTimeMillis() - startTime)); println("ms");
             reset();
         }
     
