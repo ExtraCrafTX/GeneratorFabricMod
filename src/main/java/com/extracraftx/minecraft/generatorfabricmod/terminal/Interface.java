@@ -466,8 +466,16 @@ public class Interface{
                 }else if(input == 8){ //Bksp
                     switch(currentSection){
                         case 0: {major /= 10; break;}
-                        case 1: {minor /= 10; break;}
-                        case 2: {patch /= 10; break;}
+                        case 1: {
+                            if(minor == 0)
+                                currentSection --;
+                            minor /= 10; break;
+                        }
+                        case 2: {
+                            if(patch == 0)
+                                currentSection --;
+                            patch /= 10; break;
+                        }
                         default: {
                             if(currentSection < buildThresh-1){
                                 if(pre != null && pre.size() > 0){
@@ -478,7 +486,11 @@ public class Interface{
                                         if(currentSection < buildThresh - 2)
                                             currentSection --;
                                     }
+                                }else{
+                                    currentSection--;
                                 }
+                            }else if(currentSection == buildThresh-1){
+                                currentSection--;
                             }else if(currentSection >= buildThresh && currentSection < end){
                                 if(build != null && build.size() > 0){
                                     int index = currentSection - buildThresh;
@@ -488,7 +500,11 @@ public class Interface{
                                         if(currentSection < end - 1)
                                             currentSection --;
                                     }
+                                }else{
+                                    currentSection--;
                                 }
+                            }else if(currentSection >= buildThresh && currentSection == end){
+                                currentSection --;
                             }
                         }
                     }
