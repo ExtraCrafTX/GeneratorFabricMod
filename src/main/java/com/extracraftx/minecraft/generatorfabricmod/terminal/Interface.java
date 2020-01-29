@@ -743,6 +743,7 @@ public class Interface{
     
         public void error(String error){
             running = false;
+            long time = System.currentTimeMillis() - startTime;
             try{
                 this.join();
             }catch(InterruptedException e){}
@@ -752,12 +753,13 @@ public class Interface{
             red(); bold();
             print(error); print(" ");
             normal(); dark();
-            print((int)(System.currentTimeMillis() - startTime)); println("ms");
+            print((int)time); println("ms");
             reset();
         }
     
         public void finish(String success){
             running = false;
+            long time = System.currentTimeMillis() - startTime;
             try{
                 this.join();
             }catch(InterruptedException e){}
@@ -767,7 +769,7 @@ public class Interface{
             green(); bold();
             print(success); print(" ");
             normal(); dark();
-            print((int)(System.currentTimeMillis() - startTime)); println("ms");
+            print((int)time); println("ms");
             reset();
         }
     
