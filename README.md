@@ -6,7 +6,7 @@ Also provides basic validation to prevent some errors.
 ## Installation
 1. Download the latest release
 2. Unpack the distribution to a folder of your choice
-3. Add the `bin` directory to your `PATH` environemnt variable
+3. Add the `bin` directory to your `PATH` environment variable
 
 ## Usage
 Once the `bin` directory has been added to your `PATH`, navigate to the folder where you would like to create a new project. Here, simply run GeneratorFabricMod:
