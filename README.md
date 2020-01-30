@@ -1,4 +1,5 @@
 # GeneratorFabricMod [![Release][releases-badge]][releases-link]
+![Demo](https://imgur.com/NHe9gtF.gif)  
 Prompts for various information and outputs a skeleton mod, ready to be modified. Prevents faffing about with the example mod and having to change various fields, potentially missing certain information.
 
 Also provides basic validation to prevent some errors.
