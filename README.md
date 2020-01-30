@@ -4,9 +4,20 @@ Prompts for various information and outputs a skeleton mod, ready to be modified
 Also provides basic validation to prevent some errors.
 
 ## Installation
-1. Download the latest release
-2. Unpack the distribution to a folder of your choice
-3. Add the `bin` directory to your `PATH` environment variable
+#### 1. Download the latest [release][releases-link]
+#### 2. Unpack the distribution to a folder of your choice
+#### 3. Add the `bin` directory to your `PATH` environment variable
+**Windows:**  
+* In the start menu, search for `Environment variables` and select `Edit the system environment variables`.  
+* In the system properties screen that comes up, press the `Environment variables` button in the bottom right.
+* Under `System variables`, select `Path` then click `Edit`.
+* Add an entry for the `bin` folder and click OK to save.
+
+**Linux and Mac:**
+* Configure the PATH environment variable to include the `bin` directory:  
+    ```bash
+    $ export PATH=$PATH:/your/chosen/folder/GeneratorFabricMod/bin
+    ```
 
 ## Usage
 Once the `bin` directory has been added to your `PATH`, navigate to the folder where you would like to create a new project. Here, simply run GeneratorFabricMod:
