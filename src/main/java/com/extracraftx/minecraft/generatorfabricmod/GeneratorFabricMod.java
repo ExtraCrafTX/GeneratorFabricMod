@@ -157,7 +157,7 @@ public class GeneratorFabricMod {
             int yarnVersionIndex = prompter.promptList("Select Yarn mappings:", true, 0, yarnOptions);
             YarnVersion yarnVersion = (YarnVersion) yarnOptions[yarnVersionIndex];
 
-            int defaultLoom = loomVersions.size() - dataProvider.getDefaultLoomVersion(yarnVersion) - 1;
+            int defaultLoom = dataProvider.getDefaultLoomVersion(yarnVersion).index;
             LoomVersion loomVersion = loomVersions
                     .get(prompter.promptList("Select Loom version:", true, defaultLoom, loomVersions.toArray()));
             
