@@ -6,6 +6,9 @@ plugins {
     id 'application'
 }
 
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
 repositories {
     // Use jcenter for resolving dependencies.
     jcenter()
@@ -16,7 +19,7 @@ dependencies {
     // This dependency is used by the application.
     implementation 'org.jline:jline:3.15.0'
     implementation 'org.fusesource.jansi:jansi:1.18'
-    implementation 'com.extracraftx.minecraft:TemplateMakerFabric:0.3.0'
+    implementation 'com.extracraftx.minecraft:TemplateMakerFabric:0.4.0'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'

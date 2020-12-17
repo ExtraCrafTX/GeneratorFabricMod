@@ -45,6 +45,7 @@ public class GeneratorFabricMod {
     public static final Pattern IDENT_REGEX = Pattern.compile("^[A-Za-z$_][A-Za-z0-9$_]*$");
 
     public static void main(String[] args) {
+        System.out.println("GeneratorFabricMod version 0.1.4");
         try {
             Interface prompter = new Interface();
             DataProvider dataProvider = new DataProvider();
@@ -60,27 +61,22 @@ public class GeneratorFabricMod {
                 }
             }
             prompter.finishSpinner("[done]");
-            Thread.sleep(500);
 
             prompter.startSpinner("Getting Fabric API versions... ", INTERVAL, SPINNER);
             ArrayList<IndexedFabricApiVersion> apiVersions = dataProvider.getSortedFabricApiVersions();
             prompter.finishSpinner("[done]");
-            Thread.sleep(500);
 
             prompter.startSpinner("Getting Yarn mapping versions... ", INTERVAL, SPINNER);
             dataProvider.getYarnVersions();
             prompter.finishSpinner("[done]");
-            Thread.sleep(500);
 
             prompter.startSpinner("Getting Loom versions... ", INTERVAL, SPINNER);
             ArrayList<LoomVersion> loomVersions = dataProvider.getLoomVersions();
             prompter.finishSpinner("[done]");
-            Thread.sleep(500);
 
             prompter.startSpinner("Getting Fabric Loader versions... ", INTERVAL, SPINNER);
             dataProvider.getLoaderVersions();
             prompter.finishSpinner("[done]");
-            Thread.sleep(500);
 
             License[] licenses = dataProvider.getSupportedLicenses();
 
@@ -95,7 +91,7 @@ public class GeneratorFabricMod {
                     s -> s.isEmpty() ? "You must input a description" : null);
             String modVersion = prompter.promptSemVer("Mod version:");
             String author = prompter.prompt("Author:", s -> s.isEmpty() ? "You must input an author" : null);
-            
+
             String homepage = prompter.prompt("Homepage (not required):", s -> {
                 if (s.isEmpty())
                     return null;
@@ -110,13 +106,13 @@ public class GeneratorFabricMod {
                     return "Please enter a valid URL";
                 return null;
             });
-            
+
             int license = prompter.promptList("License:", true, 1, dataProvider.getSupportedLicenses());
             String licenseName = author;
             if (licenses[license].requiresName)
                 licenseName = prompter.prompt("Name on license:", author,
                         s -> s.isEmpty() ? "You must enter a name for the license" : null);
-            
+
             String packageName = prompter.prompt("Main package:", s -> {
                 if (s.isEmpty())
                     return "You must enter a package";
@@ -160,11 +156,11 @@ public class GeneratorFabricMod {
             int defaultLoom = dataProvider.getDefaultLoomVersion(yarnVersion).index;
             LoomVersion loomVersion = loomVersions
                     .get(prompter.promptList("Select Loom version:", true, defaultLoom, loomVersions.toArray()));
-            
+
             Object[] loaderOptions = dataProvider.getFilteredLoaderVersions(loomVersion).toArray();
             int loaderVersionIndex = prompter.promptList("Select Fabric Loader version:", true, 0, loaderOptions);
             LoaderVersion loaderVersion = (LoaderVersion) loaderOptions[loaderVersionIndex];
-            
+
             String mavenGroup = prompter.prompt("Maven group:", packageName, s -> {
                 if (s.isEmpty())
                     return "You must enter a maven group";
@@ -216,6 +212,7 @@ public class GeneratorFabricMod {
                     file -> prompter.finishSpinner("[done]"));
         } catch (Exception e) {
             e.printStackTrace();
+            System.exit(1);
         }
     }
 
