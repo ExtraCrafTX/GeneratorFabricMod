@@ -12,14 +12,14 @@ targetCompatibility = JavaVersion.VERSION_1_8
 repositories {
     // Use jcenter for resolving dependencies.
     jcenter()
-    maven { url "https://maven.extracraftx.com"}
+    maven { url "https://maven.extracraftx.com" }
 }
 
 dependencies {
     // This dependency is used by the application.
     implementation 'org.jline:jline:3.15.0'
     implementation 'org.fusesource.jansi:jansi:1.18'
-    implementation 'com.extracraftx.minecraft:TemplateMakerFabric:0.4.0'
+    implementation 'com.extracraftx.minecraft:TemplateMakerFabric:0.4.1'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
@@ -29,8 +29,8 @@ application {
     // Define the main class for the application.
     mainClassName = 'com.extracraftx.minecraft.generatorfabricmod.GeneratorFabricMod'
 
-    jar{
-        manifest{
+    jar {
+        manifest {
             attributes "Main-Class": "$mainClassName"
         }
     }
